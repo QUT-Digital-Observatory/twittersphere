@@ -178,7 +178,6 @@ def load_rule_files(file_paths):
                     prune_rules[field].add(rule)
 
     for field, rules in prune_rules.items():
-        print(f"pruning exclude rules with no matching include for {field}: {rules}")
         redundant_exclude_rules[field] -= rules
 
     include_rules = {
@@ -272,6 +271,13 @@ def filter(ctx, input_files, output_file, rules):
 
     # Instantiate and validate the rules
     include_rules, exclude_rules, all_rules = load_rule_files([rules])
+    total_include_rules = sum(len(x) for x in include_rules.values())
+    total_exclude_rules = sum(len(x) for x in exclude_rules.values())
+
+    print(
+        f"Loaded {total_include_rules} distinct inclusion rules "
+        f"and {total_exclude_rules} distinct exclude_rules from {rules}"
+    )
 
     tweets_seen = 0
     tweets_matched = 0
