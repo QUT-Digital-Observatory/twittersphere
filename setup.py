@@ -36,5 +36,7 @@ setuptools.setup(
     use_scm_version=True,
     install_requires=install_requires,
     extras_require=extras_require,
-    entry_points={"console_scripts": ["twittersphere=twittersphere:twittersphere"]},
+    entry_points={
+        "console_scripts": ["twittersphere=twittersphere:twittersphere.twittersphere"]
+    },
 )
