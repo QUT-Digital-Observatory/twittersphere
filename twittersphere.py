@@ -273,6 +273,10 @@ def filter(ctx, input_files, output_file, rules):
     # Instantiate and validate the rules
     include_rules, exclude_rules, all_rules = load_rule_files([rules])
 
+    tweets_seen = 0
+    tweets_matched = 0
+    next_status = 10000
+
     with open(output_file, "w") as out:
         for file in input_files:
             with open(file, "r") as f:
@@ -282,10 +286,15 @@ def filter(ctx, input_files, output_file, rules):
                         api_result_page, include_rules, exclude_rules
                     )
 
-                    print(
-                        len(api_result_page["data"]),
-                        len(transformed_result_page["data"]),
-                    )
+                    tweets_seen += len(api_result_page["data"])
+                    tweets_matched += len(transformed_result_page["data"])
+
+                    if tweets_seen >= next_status:
+                        print(f"Matched {tweets_matched}/{tweets_seen}.")
+
+                        next_status += 10000
 
                     out.write(json.dumps(transformed_result_page))
                     out.write("\n")
+
+    print(f"Matched {tweets_matched}/{tweets_seen} in total.")
