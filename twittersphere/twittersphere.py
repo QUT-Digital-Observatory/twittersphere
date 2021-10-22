@@ -258,7 +258,9 @@ def apply_rules(api_result_page, include_rules, exclude_rules):
             if author_id not in top_level_authors:
                 continue
 
-            matched, _, _ = classify_user_profile(profile, include_rules, exclude_rules)
+            matched, positive_matches, negative_matches = classify_user_profile(
+                profile, include_rules, exclude_rules
+            )
 
             author_fields = tuple(
                 profile.get(field, "") for field in ("name", "description", "location")
@@ -316,7 +318,9 @@ def transform_profiles_for_annotation(
             list(account_tweet_count.keys()), qa_profile_count
         )
 
-    munge_bit_location = 2 ** 16
+    random.shuffle(sample_profiles)
+
+    bit_location = 2 ** 16
 
     for profile in sample_profiles:
         author_ids, tweet_count, matched = account_tweet_count[profile]
@@ -325,9 +329,9 @@ def transform_profiles_for_annotation(
         # it doesn't leak into labelling
         obfuscated_match = random.randint(0, sys.maxsize)
         if matched:
-            obfuscated_match |= munge_bit_location
+            obfuscated_match |= bit_location
         else:
-            obfuscated_match & ~munge_bit_location
+            obfuscated_match & ~bit_location
 
         yield (*profile, len(author_ids), tweet_count, hex(obfuscated_match))
 
@@ -341,10 +345,10 @@ def twittersphere(ctx):
 
 
 @twittersphere.command("filter")
-@click.argument("input_files", type=click.Path(), nargs=-1)
-@click.argument("output_file", type=click.Path())
+@click.argument("input_files", type=click.Path(exists=True), nargs=-1)
+@click.argument("output_file", type=click.Path(exists=False))
 @click.option("--rules", type=click.Path(exists=True))
-@click.option("--qa-profile-count", type=int, default=1000)
+@click.option("--qa-profile-count", type=int, default=100)
 @click.pass_context
 def filter(ctx, input_files, output_file, rules, qa_profile_count):
 
@@ -419,9 +423,56 @@ def filter(ctx, input_files, output_file, rules, qa_profile_count):
                 "unique_profiles",
                 "tweet_count",
                 "obfuscated_match",
+                "human_label",
             ]
         )
         for row in transform_profiles_for_annotation(
             account_tweet_count, qa_profile_count
         ):
             writer.writerow(row)
+
+
+@twittersphere.command("concordance")
+@click.argument("input_file", type=click.Path(exists=True))
+@click.pass_context
+def concordance(ctx, input_file):
+    """
+    Measure concordance between the automated labels and the human labels.
+
+    TODO:
+
+    The output file deobfuscates the machine matched column and rules, and
+    creates additional columns describing the entries in the concordance
+    table.
+
+    """
+    with open(input_file, "r") as f:
+        reader = csv.reader(f, quoting=csv.QUOTE_ALL, dialect="excel")
+
+        # skip header
+        next(reader)
+
+        bit_location = 2 ** 16
+
+        # Accumulators
+        concordance = Counter()
+        weighted_concordance = Counter()
+
+        for row in reader:
+            profile_count = int(row[3])
+            tweet_count = int(row[4])
+            auto_match = bool(int(row[5], 0) & bit_location)
+            human_match = bool(row[6])
+
+            concordance[(human_match, auto_match)] += profile_count
+            weighted_concordance[(human_match, auto_match)] += tweet_count
+
+        print(
+            "Profile weighted concordance counts. Format is Human/Auto decision: weight."
+        )
+        for decision, weight in sorted(concordance.items()):
+            print(decision, weight)
+
+        print("Tweet weighted concordance counts.")
+        for decision, weight in sorted(weighted_concordance.items()):
+            print(decision, weight)
