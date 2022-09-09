@@ -196,9 +196,9 @@ def insert_processed(db_conn, processed):
 
         # Tweet ancillary - mentions, media, urls, hashtags, annotations
         db_conn.executemany(
-            "insert or ignore into tweet_media values (?, ?)",
+            "insert or ignore into tweet_media values (?, ?, ?)",
             (
-                (tweet["id"], media_key)
+                (tweet["id"], metadata["retrieved_at"], media_key)
                 for tweet in tweets
                 for media_key in tweet["media_keys"]
             ),

@@ -112,9 +112,7 @@ POLL_SPEC = {
     "voting_status": "voting_status",
 }
 
-# URLs
-# Context Annotations
-#
+
 # "entities.annotations": "entities.annotations",
 # "entities.cashtags": "entities.cashtags",
 # "entities.urls": "entities.urls",

@@ -49,7 +49,7 @@ and some more extended examples below.
     protected text,
     description text,
     location text,
-    pinned_tweet_id integer references tweet(tweet_id),
+    pinned_tweet_id integer,
     verified integer, -- boolean
     url text,
     username text,
@@ -74,7 +74,7 @@ create table if not exists directly_collected_user(
         count(*)
     from directly_collected_user;
     */
-    user_id integer primary key references user_latest
+    user_id integer primary key
 );
 
 create table if not exists tweet_at_time (
@@ -114,10 +114,10 @@ create table if not exists tweet_at_time (
     user_id integer,
     created_at text,
     retrieved_at datetime,
-    conversation_id text,
-    retweeted_tweet_id text references tweet,
-    quoted_tweet_id text references tweet,
-    replied_to_tweet_id text references tweet,
+    conversation_id integer,
+    retweeted_tweet_id integer,
+    quoted_tweet_id integer,
+    replied_to_tweet_id integer,
     text text,
     lang text,
     source text,
@@ -149,14 +149,14 @@ create table if not exists directly_collected_tweet(
         count(*)
     from directly_collected_tweet;
     */
-    tweet_id integer primary key references tweet
+    tweet_id integer primary key
 );
 
 create table if not exists tweet_hashtag(
     tweet_id integer,
     retrieved_at datetime,
     hashtag text,
-    foreign key (tweet_id, retrieved_at) references tweet,
+    foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, hashtag)
 );
 
@@ -165,7 +165,7 @@ create table if not exists tweet_mention(
     retrieved_at datetime,
     mentioned_user_id text,
     mentioned_username text,
-    foreign key (tweet_id, retrieved_at) references tweet,
+    foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, mentioned_user_id)
 );
 
@@ -189,7 +189,7 @@ create table if not exists poll_option(
 );
 
 create table if not exists place(
-    place_id primary key,
+    place_id text primary key,
     country text,
     country_code text,
     full_name text,
@@ -217,9 +217,11 @@ create table if not exists media(
 );
 
 create table if not exists tweet_media(
-    tweet_id integer references tweet,
-    media_key text references media,
-    primary key (tweet_id, media_key)
+    tweet_id integer,
+    retrieved_at datetime,
+    media_key text,
+    primary key (tweet_id, retrieved_at, media_key)
+    foreign key (media_key, retrieved_at) references media
 );
 
 create table if not exists metadata (
@@ -232,26 +234,3 @@ insert or ignore into metadata values('twittersphere_schema_version', {});
 """.format(
     CURRENT_SCHEMA_VERSION
 )
-
-VIEWS_INDEXES = """
-
-CREATE index if not exists tweet_period on tweet(created_at);
-create index if not exists tweet_conversation on tweet(conversation_id);
--- Main tweet table
-
---
-create index if not exists url_period on tweet_url(created_at);
-create index if not exists url_user on tweet_url(user_id);
-create index if not exists url_url on tweet_url(expanded_url);
-create index if not exists url_domain on tweet_url(expanded_domain);
-
---
-create index if not exists hashtag_tweet on tweet_hashtag(hashtag);
-create index if not exists hashtag_normalised_tweet on tweet_hashtag(hashtag_normalised);
-create index if not exists hashtag_period on tweet_hashtag(created_at);
-
---
-create index if not exists user_mentioning on tweet_mention(user_id, mentioned_user_id);
-create index if not exists user_mentioned on tweet_mention(mentioned_user_id, user_id);
-
-"""
