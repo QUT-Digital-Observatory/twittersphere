@@ -8,7 +8,7 @@ TODO:
 
 """
 
-CURRENT_SCHEMA_VERSION = 9
+CURRENT_SCHEMA_VERSION = 11
 
 SCHEMA_STATEMENTS = """
 CREATE table if not exists collection_context (
@@ -160,6 +160,14 @@ create table if not exists tweet_hashtag(
     primary key (tweet_id, retrieved_at, hashtag)
 );
 
+create table if not exists tweet_cashtag(
+    tweet_id integer,
+    retrieved_at datetime,
+    cashtag text,
+    foreign key (tweet_id, retrieved_at) references tweet_at_time,
+    primary key (tweet_id, retrieved_at, cashtag)
+);
+
 create table if not exists tweet_mention(
     tweet_id integer,
     retrieved_at datetime,
@@ -167,6 +175,29 @@ create table if not exists tweet_mention(
     mentioned_username text,
     foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, mentioned_user_id)
+);
+
+create table if not exists url(
+    url text,
+    retrieved_at datetime,
+    description text,
+    display_url text,
+    expanded_url text,
+    images text,
+    media_key text,
+    status text,
+    title text,
+    unwound_url text,
+    primary key (url, retrieved_at)
+);
+
+create table if not exists tweet_url(
+    tweet_id integer,
+    retrieved_at datetime,
+    url text,
+    foreign key (tweet_id, retrieved_at) references tweet_at_time,
+    foreign key (url, retrieved_at) references url,
+    primary key (tweet_id, retrieved_at, url)
 );
 
 create table if not exists poll(
@@ -222,6 +253,25 @@ create table if not exists tweet_media(
     media_key text,
     primary key (tweet_id, retrieved_at, media_key)
     foreign key (media_key, retrieved_at) references media
+);
+
+create table if not exists domain(
+    domain_id primary key,
+    name text,
+    description text
+);
+
+create table if not exists entity(
+    entity_id primary key,
+    name text,
+    description text
+);
+
+create table if not exists tweet_entity_domain(
+    tweet_id integer,
+    retrieved_at datetime,
+    entity_id integer references entity,
+    domain_id integer references domain
 );
 
 create table if not exists metadata (

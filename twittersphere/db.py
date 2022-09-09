@@ -98,7 +98,7 @@ def insert_processed(db_conn, processed):
     writes aren't seen.
 
     """
-    main = processed["data"]
+    data = processed["data"]
     includes = processed["includes"]
     metadata = processed["metadata"]
 
@@ -130,7 +130,7 @@ def insert_processed(db_conn, processed):
         metadata["context_id"] = context_id
 
         # Process users
-        users = main.get("users", []) + includes.get("users", [])
+        users = data.get("users", []) + includes["users"]
         db_conn.executemany(
             """
             insert or ignore into user_at_time values (
@@ -159,11 +159,11 @@ def insert_processed(db_conn, processed):
 
         db_conn.executemany(
             "insert or ignore into directly_collected_user values(:id)",
-            (main.get("users", [])),
+            (data.get("users", [])),
         )
 
         # Process Tweets
-        tweets = main.get("tweets", []) + includes.get("tweets", [])
+        tweets = data.get("tweets", []) + includes["tweets"]
         db_conn.executemany(
             """
             insert or ignore into tweet_at_time values (
@@ -214,6 +214,15 @@ def insert_processed(db_conn, processed):
         )
 
         db_conn.executemany(
+            "insert or ignore into tweet_cashtag values (?, ?, ?)",
+            (
+                (tweet["id"], metadata["retrieved_at"], cashtag)
+                for tweet in tweets
+                for cashtag in tweet["cashtags"]
+            ),
+        )
+
+        db_conn.executemany(
             "insert or ignore into tweet_mention values (?, ?, ?, ?)",
             (
                 (
@@ -228,8 +237,73 @@ def insert_processed(db_conn, processed):
         )
 
         db_conn.executemany(
+            """
+            insert or ignore into url values (
+                :url,
+                :retrieved_at,
+                :description,
+                :display_url,
+                :expanded_url,
+                :images,
+                :media_key,
+                :status,
+                :title,
+                :unwound_url
+            )
+            """,
+            (url | metadata for tweet in tweets for url in tweet["urls"]),
+        )
+
+        db_conn.executemany(
+            """
+            insert or ignore into tweet_url values (
+                :id,
+                :retrieved_at,
+                :url
+            )
+            """,
+            (
+                (url["url"], metadata["retrieved_at"], tweet["id"])
+                for tweet in tweets
+                for url in tweet["urls"]
+            ),
+        )
+
+        db_conn.executemany(
             "insert or ignore into directly_collected_tweet values(:id)",
-            (main.get("tweets", [])),
+            (data.get("tweets", [])),
+        )
+
+        db_conn.executemany(
+            "insert or ignore into tweet_entity_domain values (?, ?, ?, ?)",
+            (
+                (
+                    tweet["id"],
+                    metadata["retrieved_at"],
+                    annotation["entity_id"],
+                    annotation["domain_id"],
+                )
+                for tweet in tweets
+                for annotation in tweet["context_annotations"]
+            ),
+        )
+
+        db_conn.executemany(
+            "insert or ignore into entity values (:entity_id, :entity_name, :entity_description)",
+            (
+                annotation
+                for tweet in tweets
+                for annotation in tweet["context_annotations"]
+            ),
+        )
+
+        db_conn.executemany(
+            "insert or ignore into domain values (:domain_id, :domain_name, :domain_description)",
+            (
+                annotation
+                for tweet in tweets
+                for annotation in tweet["context_annotations"]
+            ),
         )
 
         # Process polls
@@ -243,7 +317,7 @@ def insert_processed(db_conn, processed):
                 :voting_status
             )
             """,
-            (poll | metadata for poll in includes.get("polls", [])),
+            (poll | metadata for poll in includes["polls"]),
         )
 
         db_conn.executemany(
@@ -258,7 +332,7 @@ def insert_processed(db_conn, processed):
             """,
             (
                 option | poll | metadata
-                for poll in includes.get("polls", [])
+                for poll in includes["polls"]
                 for option in poll["options"]
             ),
         )
@@ -280,7 +354,7 @@ def insert_processed(db_conn, processed):
                 :place_type
             )
             """,
-            includes.get("places", []),
+            includes["places"],
         )
 
         # Process media
@@ -299,7 +373,7 @@ def insert_processed(db_conn, processed):
                 :height
             )
             """,
-            (media | metadata for media in includes.get("media", [])),
+            (media | metadata for media in includes["media"]),
         )
 
     except Exception:

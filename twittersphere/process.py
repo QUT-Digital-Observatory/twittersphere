@@ -2,13 +2,16 @@
 Utilities for extracting tweet related entities from V2 Twitter API JSON as
 collected via twarc.
 
-The data processing for this module is built around a set of
-[Glom](https://glom.readthedocs.io/en/latest/) specifications for the individual
-little pieces of the API data.
+The data processing for this module is built around a set of[Glom]
+(https://glom.readthedocs.io/en/latest/) specifications for the individual
+little pieces of the API data, composed in PAGE_SPEC for processing an
+arbitrary page of API data.
 
 Note that the functionality here works with one page of API data at a time -
 when processing lots of data you will need to consider how you will handle
-problems like users and tweets duplicated over time/API responses.
+problems like users and tweets duplicated over time/API responses. The DB
+module and schema are designed to represent this naturally for you in
+an SQLite database.
 
 """
 
@@ -17,7 +20,7 @@ import json
 
 from glom import glom, Coalesce, Merge, T
 
-
+# TODO: user profile related entities.
 # entities.description.cashtags
 # entities.description.hashtags
 # entities.description.mentions
@@ -57,9 +60,36 @@ REFERENCED_TWEET_SPEC = (
     },
 )
 
-# This is for entities.hashtags
-HASHTAGS = ["tag"]
+# This is for the tweet entities - note there are some differences
+# for the entities in a profile object
+HASHTAGS = CASHTAGS = ["tag"]
 TWEET_MENTIONS = [{"username": "username", "user_id": "id"}]
+CONTEXT_ANNOTATIONS = [
+    {
+        "domain_id": "domain.id",
+        "domain_name": "domain.name",
+        "domain_description": Coalesce("domain.description", default=None),
+        "entity_id": "entity.id",
+        "entity_name": "entity.name",
+        "entity_description": Coalesce("entity.description", default=None),
+    }
+]
+
+# Note that URLs are heterogenous - I think part of this is driven by whether
+# the page at the URL has an appropriate social media sharing card.
+TWEET_URLS = [
+    {
+        "description": Coalesce("description", default=None),
+        "display_url": Coalesce("display_url", default=None),
+        "expanded_url": Coalesce("expanded_url", default=None),
+        "images": Coalesce(("images", json.dumps), default=None),
+        "media_key": Coalesce("media_key", default=None),
+        "status": Coalesce("status", default=None),
+        "title": Coalesce("title", default=None),
+        "unwound_url": Coalesce("unwound_url", default=None),
+        "url": Coalesce("url", default=None),
+    }
+]
 
 
 TWEET_SPEC = (
@@ -91,7 +121,13 @@ TWEET_SPEC = (
             "place_id": Coalesce("geo.place_id", default=None),
             "media_keys": Coalesce("attachments.media_keys", default=[]),
             "hashtags": (Coalesce("entities.hashtags", default=[]), HASHTAGS),
+            "cashtags": (Coalesce("entities.cashtags", default=[]), CASHTAGS),
             "mentions": (Coalesce("entities.mentions", default=[]), TWEET_MENTIONS),
+            "urls": (Coalesce("entities.urls", default=[]), TWEET_URLS),
+            "context_annotations": (
+                Coalesce("context_annotations", default=[]),
+                CONTEXT_ANNOTATIONS,
+            ),
         },
         "referenced": Coalesce(
             ("referenced_tweets", REFERENCED_TWEET_SPEC),
@@ -112,11 +148,7 @@ POLL_SPEC = {
     "voting_status": "voting_status",
 }
 
-
 # "entities.annotations": "entities.annotations",
-# "entities.cashtags": "entities.cashtags",
-# "entities.urls": "entities.urls",
-# "context_annotations": "context_annotations",
 
 
 PLACE_SPEC = {
@@ -162,7 +194,9 @@ PAGE_SPEC = {
         ({"users": ("data", [USER_SPEC])}),
         # Array of tweets (search, timelines etc)
         ({"tweets": ("data", [TWEET_SPEC])}),
-        # Single tweet - sample/filter
+        # Single tweet - sample/filter - the lambda is necessary to take the
+        # output and wrap in an array so that it works like all the other
+        # data structures.
         ({"tweets": ("data", TWEET_SPEC, lambda x: [x])}),
         # Note that no default is specified here - if nothing matches an error needs to be raised
         # because otherwise we don't know what the data actually is.
@@ -181,4 +215,6 @@ def process_page(raw_page):
 
     page = json.loads(raw_page)
 
-    return glom(page, PAGE_SPEC)
+    processed = glom(page, PAGE_SPEC)
+
+    return processed
