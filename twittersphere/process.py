@@ -165,7 +165,7 @@ PAGE_SPEC = {
         # Array of tweets (search, timelines etc)
         ({"tweets": ("data", [TWEET_SPEC])}),
         # Single tweet - sample/filter
-        ({"tweets": ("data", TWEET_SPEC)}),
+        ({"tweets": ("data", TWEET_SPEC, lambda x: [x])}),
         # Note that no default is specified here - if nothing matches an error needs to be raised
         # because otherwise we don't know what the data actually is.
     ),
