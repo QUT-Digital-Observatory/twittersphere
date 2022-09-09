@@ -8,7 +8,7 @@ TODO:
 
 """
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 9
 
 SCHEMA_STATEMENTS = """
 CREATE table if not exists collection_context (
@@ -111,7 +111,7 @@ create table if not exists tweet_at_time (
     */
     tweet_id integer,
     context_id integer references collection_context,
-    user_id integer references user_latest,
+    user_id integer,
     created_at text,
     retrieved_at datetime,
     conversation_id text,
@@ -129,8 +129,11 @@ create table if not exists tweet_at_time (
     retweet_count integer,
     withheld_copyright integer, --boolean
     withheld_country_codes text,
+    poll_id integer,
+    place_id integer references place,
     primary key (tweet_id, retrieved_at),
-    foreign key (user_id, retrieved_at) references user_at_time
+    foreign key (user_id, retrieved_at) references user_at_time,
+    foreign key (poll_id, retrieved_at) references poll
 );
 
 create table if not exists directly_collected_tweet(
@@ -147,6 +150,76 @@ create table if not exists directly_collected_tweet(
     from directly_collected_tweet;
     */
     tweet_id integer primary key references tweet
+);
+
+create table if not exists tweet_hashtag(
+    tweet_id integer,
+    retrieved_at datetime,
+    hashtag text,
+    foreign key (tweet_id, retrieved_at) references tweet,
+    primary key (tweet_id, retrieved_at, hashtag)
+);
+
+create table if not exists tweet_mention(
+    tweet_id integer,
+    retrieved_at datetime,
+    mentioned_user_id text,
+    mentioned_username text,
+    foreign key (tweet_id, retrieved_at) references tweet,
+    primary key (tweet_id, retrieved_at, mentioned_user_id)
+);
+
+create table if not exists poll(
+    poll_id integer,
+    retrieved_at datetime,
+    duration_minutes integer,
+    end_datetime datetime,
+    voting_status text,
+    primary key (poll_id, retrieved_at)
+);
+
+create table if not exists poll_option(
+    poll_id integer,
+    retrieved_at datetime,
+    position integer,
+    label text,
+    votes integer,
+    primary key (poll_id, retrieved_at, position),
+    foreign key (poll_id, retrieved_at) references poll
+);
+
+create table if not exists place(
+    place_id primary key,
+    country text,
+    country_code text,
+    full_name text,
+    geo_type text,
+    geo_bbox_1 float,
+    geo_bbox_2 float,
+    geo_bbox_3 float,
+    geo_bbox_4 float,
+    name text,
+    place_type text
+);
+
+create table if not exists media(
+    media_key text,
+    retrieved_at datetime,
+    alt_text text,
+    duration_ms integer,
+    preview_image_url text,
+    view_count integer,
+    type text,
+    url text,
+    width integer,
+    height integer,
+    primary key (media_key, retrieved_at)
+);
+
+create table if not exists tweet_media(
+    tweet_id integer references tweet,
+    media_key text references media,
+    primary key (tweet_id, media_key)
 );
 
 create table if not exists metadata (

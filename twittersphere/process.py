@@ -57,6 +57,10 @@ REFERENCED_TWEET_SPEC = (
     },
 )
 
+# This is for entities.hashtags
+HASHTAGS = ["tag"]
+TWEET_MENTIONS = [{"username": "username", "user_id": "id"}]
+
 
 TWEET_SPEC = (
     # Because of the structure of the referenced_tweets key,
@@ -81,8 +85,13 @@ TWEET_SPEC = (
             "withheld_country_codes": Coalesce(
                 ("withheld.country_codes", json.dumps), default=None
             ),
+            # Grab the first poll id only - currently a tweet can only have one
+            # poll, but the data structure implies 1:many relationship
+            "poll_id": Coalesce(("attachments.poll_ids", T[0]), default=None),
             "place_id": Coalesce("geo.place_id", default=None),
-            "poll_id": Coalesce("attachments.poll.id", default=None),
+            "media_keys": Coalesce("attachments.media_keys", default=[]),
+            "hashtags": (Coalesce("entities.hashtags", default=[]), HASHTAGS),
+            "mentions": (Coalesce("entities.mentions", default=[]), TWEET_MENTIONS),
         },
         "referenced": Coalesce(
             ("referenced_tweets", REFERENCED_TWEET_SPEC),
@@ -95,32 +104,49 @@ TWEET_SPEC = (
     Merge(),
 )
 
+POLL_SPEC = {
+    "duration_minutes": "duration_minutes",
+    "end_datetime": "end_datetime",
+    "id": "id",
+    "options": "options",
+    "voting_status": "voting_status",
+}
 
+# URLs
+# Context Annotations
+#
 # "entities.annotations": "entities.annotations",
 # "entities.cashtags": "entities.cashtags",
-# "entities.hashtags": "entities.hashtags",
-# "entities.mentions": "entities.mentions",
 # "entities.urls": "entities.urls",
 # "context_annotations": "context_annotations",
-# "attachments.media": "attachments.media",
-# "attachments.media_keys": "attachments.media_keys",
-# "attachments.poll.duration_minutes": "attachments.poll.duration_minutes",
-# "attachments.poll.end_datetime": "attachments.poll.end_datetime",
-# "attachments.poll.id": "attachments.poll.id",
-# "attachments.poll.options": "attachments.poll.options",
-# "attachments.poll.voting_status": "attachments.poll.voting_status",
-# "attachments.poll_ids": "attachments.poll_ids",
-# "geo.coordinates.coordinates": "geo.coordinates.coordinates",
-# "geo.coordinates.type": "geo.coordinates.type",
-# "geo.country": "geo.country",
-# "geo.country_code": "geo.country_code",
-# "geo.full_name": "geo.full_name",
-# "geo.geo.bbox": "geo.geo.bbox",
-# "geo.geo.type": "geo.geo.type",
-# "geo.id": "geo.id",
-# "geo.name": "geo.name",
-# "geo.place_id": "geo.place_id",
-# "geo.place_type": "geo.place_type",
+
+
+PLACE_SPEC = {
+    "country": "country",
+    "country_code": "country_code",
+    "full_name": "full_name",
+    "geo_type": "geo.type",
+    "geo_bbox_1": ("geo.bbox", T[0]),
+    "geo_bbox_2": ("geo.bbox", T[1]),
+    "geo_bbox_3": ("geo.bbox", T[2]),
+    "geo_bbox_4": ("geo.bbox", T[3]),
+    # TODO: investigate how important the properties are
+    "id": "id",
+    "name": "name",
+    "place_type": "place_type",
+}
+
+MEDIA_SPEC = {
+    "alt_text": Coalesce("alt_text", default=None),
+    "duration_ms": Coalesce("duration_ms", default=None),
+    "media_key": "media_key",
+    "preview_image_url": Coalesce("preview_image_url", default=None),
+    "view_count": Coalesce("view_count", default=None),
+    "type": "type",
+    "url": Coalesce("url", default=None),
+    "width": "width",
+    "height": "height",
+}
 
 METADATA_SPEC = {
     "twarc_version": "version",
@@ -128,6 +154,8 @@ METADATA_SPEC = {
     "twitter_url": "url",
 }
 
+# This is a composition of all of the individual specs into a single glom spec
+# that should work on the different variations of responses from the Twitter API.
 PAGE_SPEC = {
     "metadata": ("__twarc", METADATA_SPEC),
     # Note that only one of these can match, the main payload can't be of mixed type.
@@ -142,8 +170,11 @@ PAGE_SPEC = {
         # because otherwise we don't know what the data actually is.
     ),
     "includes": {
-        "users": Coalesce(("includes.users", [USER_SPEC]), default=[]),
-        "tweets": Coalesce(("includes.tweets", [TWEET_SPEC]), default=[]),
+        "users": (Coalesce("includes.users", default=[]), [USER_SPEC]),
+        "tweets": (Coalesce("includes.tweets", default=[]), [TWEET_SPEC]),
+        "polls": (Coalesce("includes.polls", default=[]), [POLL_SPEC]),
+        "places": (Coalesce("includes.places", default=[]), [PLACE_SPEC]),
+        "media": (Coalesce("includes.media", default=[]), [MEDIA_SPEC]),
     },
 }
 
@@ -153,49 +184,3 @@ def process_page(raw_page):
     page = json.loads(raw_page)
 
     return glom(page, PAGE_SPEC)
-
-
-def extract_includes(includes):
-    """
-    Process the "includes" payload of a page of responses.
-
-    The "includes" payload is much more consistent than the main payload, so
-    we can just dispatch without thinking about it. Note also that the "data"
-    payload can only ever contain tweets, users, or lists - media and places
-    never occur.
-
-    """
-    processed = {
-        "tweets": extract_tweets(includes.get("tweets", [])),
-        "users": extract_users(includes.get("users", [])),
-    }
-
-    return processed
-
-
-def extract_main(data):
-    """
-    Extract the main data component from the page of respones.
-
-    Automatically determines the type of payload (typically users
-    or tweets), and dispatches as appropriate.
-
-    """
-
-    if isinstance(data, dict):
-        # This is a stream of tweets
-        return {"tweets": extract_tweets(data)}
-
-    elif "author_id" in data[0]:
-        # This is also tweets
-        return {"tweets": extract_tweets(data)}
-    else:
-        return {"users": extract_users(data)}
-
-
-def extract_users(users_component):
-    return glom(users_component, [USER_SPEC])
-
-
-def extract_tweets(tweet_component):
-    return []
