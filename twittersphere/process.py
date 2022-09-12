@@ -2,8 +2,8 @@
 Utilities for extracting tweet related entities from V2 Twitter API JSON as
 collected via twarc.
 
-The data processing for this module is built around a set of[Glom]
-(https://glom.readthedocs.io/en/latest/) specifications for the individual
+The data processing for this module is built around a set of
+[Glom](https://glom.readthedocs.io/en/latest/) specifications for the individual
 little pieces of the API data, composed in PAGE_SPEC for processing an
 arbitrary page of API data.
 
@@ -148,6 +148,7 @@ POLL_SPEC = {
     "voting_status": "voting_status",
 }
 
+# TODO: entity annotations
 # "entities.annotations": "entities.annotations",
 
 
@@ -209,6 +210,11 @@ PAGE_SPEC = {
         "media": (Coalesce("includes.media", default=[]), [MEDIA_SPEC]),
     },
 }
+
+
+def process_page(raw_page):
+
+    return glom(json.loads(page), PAGE_SPEC)
 
 
 def process_pages(raw_pages):
