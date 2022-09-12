@@ -211,10 +211,13 @@ PAGE_SPEC = {
 }
 
 
-def process_page(raw_page):
+def process_pages(raw_pages):
 
-    page = json.loads(raw_page)
+    processed_pages = []
 
-    processed = glom(page, PAGE_SPEC)
+    for raw_page in raw_pages:
+        page = json.loads(raw_page)
 
-    return processed
+        processed_pages.append(glom(page, PAGE_SPEC))
+
+    return processed_pages

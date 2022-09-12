@@ -17,7 +17,7 @@ def twittersphere(ctx):
 @twittersphere.command("prepare")
 @click.argument("input_files", type=click.Path(exists=True), nargs=-1)
 @click.argument("output_db", type=click.Path())
-@click.option("--n_cpus", default=4, type=click.IntRange(min=1))
+@click.option("--n_cpus", default=2, type=click.IntRange(min=1))
 @click.pass_context
 def prepare(ctx, input_files, output_db, n_cpus):
     """
@@ -25,11 +25,13 @@ def prepare(ctx, input_files, output_db, n_cpus):
 
     """
 
-    conn = db.ensure_db(output_db)
+    def iterate_pages(input_files):
+        for input_file in input_files:
+            with open(input_file, "rb") as f:
+                for line in f:
+                    yield line
 
-    for input_file in input_files:
-        with open(input_file, "r") as f:
-            db.insert_pages(conn, f, n_cpus=n_cpus)
+    db.insert_pages(output_db, iterate_pages(input_files), n_cpus=n_cpus)
 
 
 @twittersphere.command("filter")

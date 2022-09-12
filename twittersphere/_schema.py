@@ -8,7 +8,7 @@ TODO:
 
 """
 
-CURRENT_SCHEMA_VERSION = 11
+CURRENT_SCHEMA_VERSION = 12
 
 SCHEMA_STATEMENTS = """
 CREATE table if not exists collection_context (
@@ -60,7 +60,7 @@ and some more extended examples below.
     withheld_country_codes text,
     -- TODO: withheld related information
     primary key (user_id, retrieved_at)
-);
+) without rowid;
 
 create table if not exists directly_collected_user(
     /*
@@ -134,7 +134,7 @@ create table if not exists tweet_at_time (
     primary key (tweet_id, retrieved_at),
     foreign key (user_id, retrieved_at) references user_at_time,
     foreign key (poll_id, retrieved_at) references poll
-);
+) without rowid;
 
 create table if not exists directly_collected_tweet(
     /*
@@ -158,7 +158,7 @@ create table if not exists tweet_hashtag(
     hashtag text,
     foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, hashtag)
-);
+) without rowid;
 
 create table if not exists tweet_cashtag(
     tweet_id integer,
@@ -166,7 +166,7 @@ create table if not exists tweet_cashtag(
     cashtag text,
     foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, cashtag)
-);
+) without rowid;
 
 create table if not exists tweet_mention(
     tweet_id integer,
@@ -175,7 +175,7 @@ create table if not exists tweet_mention(
     mentioned_username text,
     foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, mentioned_user_id)
-);
+) without rowid;
 
 create table if not exists url(
     url text,
@@ -189,7 +189,7 @@ create table if not exists url(
     title text,
     unwound_url text,
     primary key (url, retrieved_at)
-);
+) without rowid;
 
 create table if not exists tweet_url(
     tweet_id integer,
@@ -198,7 +198,7 @@ create table if not exists tweet_url(
     foreign key (tweet_id, retrieved_at) references tweet_at_time,
     foreign key (url, retrieved_at) references url,
     primary key (tweet_id, retrieved_at, url)
-);
+) without rowid;
 
 create table if not exists poll(
     poll_id integer,
@@ -207,7 +207,7 @@ create table if not exists poll(
     end_datetime datetime,
     voting_status text,
     primary key (poll_id, retrieved_at)
-);
+) without rowid;
 
 create table if not exists poll_option(
     poll_id integer,
@@ -217,7 +217,7 @@ create table if not exists poll_option(
     votes integer,
     primary key (poll_id, retrieved_at, position),
     foreign key (poll_id, retrieved_at) references poll
-);
+) without rowid;
 
 create table if not exists place(
     place_id text primary key,
@@ -231,7 +231,7 @@ create table if not exists place(
     geo_bbox_4 float,
     name text,
     place_type text
-);
+) without rowid;
 
 create table if not exists media(
     media_key text,
@@ -245,7 +245,7 @@ create table if not exists media(
     width integer,
     height integer,
     primary key (media_key, retrieved_at)
-);
+) without rowid;
 
 create table if not exists tweet_media(
     tweet_id integer,
@@ -253,7 +253,7 @@ create table if not exists tweet_media(
     media_key text,
     primary key (tweet_id, retrieved_at, media_key)
     foreign key (media_key, retrieved_at) references media
-);
+) without rowid;
 
 create table if not exists domain(
     domain_id primary key,
@@ -271,8 +271,9 @@ create table if not exists tweet_entity_domain(
     tweet_id integer,
     retrieved_at datetime,
     entity_id integer references entity,
-    domain_id integer references domain
-);
+    domain_id integer references domain,
+    primary key (tweet_id, retrieved_at, entity_id, domain_id)
+) without rowid;
 
 create table if not exists metadata (
     key text primary key,
@@ -284,3 +285,26 @@ insert or ignore into metadata values('twittersphere_schema_version', {});
 """.format(
     CURRENT_SCHEMA_VERSION
 )
+
+
+table_keys = {
+    "collection_context": "context_id",
+    "user_at_time": "user_id,retrieved_at",
+    "directly_collected_user": "user_id",
+    "tweet_at_time": "tweet_id,retrieved_at",
+    "directly_collected_tweet": "tweet_id",
+    "tweet_hashtag": "tweet_id,retrieved_at,hashtag",
+    "tweet_cashtag": "tweet_id,retrieved_at,cashtag",
+    "tweet_mention": "tweet_id,retrieved_at,mentioned_user_id",
+    "url": "url,retrieved_at",
+    "tweet_url": "tweet_id,retrieved_at,url",
+    "poll": "poll_id,retrieved_at",
+    "poll_option": "poll_id,retrieved_at,position",
+    "place": "place_id",
+    "media": "media_key,retrieved_at",
+    "tweet_media": "tweet_id,retrieved_at,media_key",
+    "domain": "domain_id",
+    "entity": "entity_id",
+    "tweet_entity_domain": "tweet_id,retrieved_at,entity_id,domain_id",
+    "metadata": "key",
+}
