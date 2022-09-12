@@ -9,7 +9,7 @@ import sqlite3
 import threading
 import time
 
-from . import process, _schema
+from . import process, _schema, twittersphere
 
 
 class SchemaVersionError(Exception):
@@ -86,7 +86,7 @@ def flush_db(db_conn, target_db_path):
     db_conn.close()
 
 
-def insert_pages(db_path, raw_pages, n_cpus=4, in_memory_max_db_size=2**30):
+def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**30):
     """
     Process the stream of pages and insert them into the database.
 

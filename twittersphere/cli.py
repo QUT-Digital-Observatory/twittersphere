@@ -34,6 +34,27 @@ def prepare(ctx, input_files, output_db, n_cpus):
     db.insert_pages(output_db, iterate_pages(input_files), n_cpus=n_cpus)
 
 
+@twittersphere.command("filter-users")
+@click.argument("rule-file", type=click.Path(exists=True))
+@click.argument("prepared-db", type=click.Path(exists=True))
+@click.option("--ruleset-name", default=None, type=str)
+# @click.option("--qa-profile-count", type=int, default=100)
+@click.pass_context
+def filter_users(ctx, rule_file, prepared_db, ruleset_name):
+    """
+    Apply the given ruleset to user profiles in `prepared-db`.
+
+    The latest `retrieved-at` version of each user profile will be used for
+    labelling. The `user_id` of each matching profile will be inserted
+    into the `user_matching_ruleset` table with the name of the ruleset.
+    This can be customised with the `--ruleset-name`, or if not provided,
+    the filename of the `rule-file` will be used instead.
+
+    If `ruleset_name` already exists in the table, it will be replaced.
+
+    """
+
+
 @twittersphere.command("filter")
 @click.argument("input_files", type=click.Path(exists=True), nargs=-1)
 @click.argument("output_file", type=click.Path(exists=False))

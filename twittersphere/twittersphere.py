@@ -212,8 +212,8 @@ def classify_user_profile(profile, include_rules, exclude_rules):
         text = profile.get(field, "")
 
         ngram_tokens = ngrams(text, 3, stopwords=stopwords)
-        positive_matches[field] = ngram_tokens & include_rules[field]
-        negative_matches[field] = ngram_tokens & exclude_rules[field]
+        positive_matches[field] = ngram_tokens & include_rules.get(field, set())
+        negative_matches[field] = ngram_tokens & exclude_rules.get(field, set())
 
     matched = sum(len(m) for m in positive_matches.values()) > sum(
         len(m) for m in negative_matches.values()
@@ -335,3 +335,178 @@ def transform_profiles_for_annotation(
             obfuscated_match & ~bit_location
 
         yield (*profile, len(author_ids), tweet_count, hex(obfuscated_match))
+
+
+def apply_user_rules_to_db(db_conn, include_rules, exclude_rules, ruleset_name):
+    """
+    Apply the specified include/exclude rules to the given database conn.
+
+    Only the latest version of each profile is considered for labelling.
+
+    """
+    try:
+        db_conn.execute("begin")
+
+        db_conn.execute(
+            "delete from user_matching_ruleset where ruleset_name = ?", [ruleset_name]
+        )
+
+        profiles = db_conn.execute(
+            "select user_id, location, description, name from user_latest"
+        )
+
+        for user_id, location, description, name in profiles:
+            matched, _, _ = classify_user_profile(
+                {
+                    "location": location or "",
+                    "description": description or "",
+                    "name": name or "",
+                },
+                include_rules,
+                exclude_rules,
+            )
+
+            if matched:
+                db_conn.execute(
+                    "insert into user_matching_ruleset values (?, ?)",
+                    [ruleset_name, user_id],
+                )
+
+        db_conn.execute("commit")
+
+    except:
+        db_conn.execute("rollback")
+        raise
+
+
+def count_user_ngrams(db_conn, stopwords, ruleset_name=""):
+    """
+    Count ngrams present in the latest version of each user in the collection.
+
+    If no ruleset_name is provided, this will be a global count across all
+    matching users, otherwise only the `user_id`'s that match `ruleset_name`
+    in the `user_matching_ruleset` table will be counted. This is to support
+    statistical comparisons across different ruleset groups without
+    tokenising everything again.
+
+    """
+
+    try:
+        db_conn.execute("begin")
+
+        db_conn.execute(
+            """
+            create temporary table ruleset_ngram_part as
+                select *
+                from user_ruleset_ngram_count
+                limit 0
+            """
+        )
+
+        if ruleset_name:
+            profiles = db_conn.execute(
+                """
+                select
+                    user_id, location, description, name
+                from user_latest
+                where user_id in (
+                    select user_id
+                    from user_matching_ruleset
+                    where ruleset_name = ?
+                )
+                """,
+                [ruleset_name],
+            )
+        else:
+            profiles = db_conn.execute(
+                """
+                select
+                    user_id, location, description, name
+                from user_latest
+                """
+            )
+
+        ngram_counts = defaultdict(Counter)
+
+        counts = 0
+
+        for user_id, location, description, name in profiles:
+
+            # Tokenise all of the fields.
+            if location:
+
+                l = ngrams(location, 3, stopwords=stopwords)
+                counts += len(l)
+
+                for ngram in l:
+                    ngram_counts["location"][ngram] += 1
+
+            if description:
+
+                d = ngrams(description, 3, stopwords=stopwords)
+                counts += len(d)
+
+                for ngram in d:
+                    ngram_counts["description"][ngram] += 1
+
+            if name:
+
+                n = ngrams(name, 3, stopwords=stopwords)
+                counts += len(n)
+
+                for ngram in n:
+                    ngram_counts["name"][ngram] += 1
+
+            if counts >= 1000000:
+
+                db_conn.executemany(
+                    """insert into ruleset_ngram_part values(?, ?, ?, ?, ?, ?)""",
+                    (
+                        (ruleset_name, field, *(n + (("",) * (3 - len(n)))), count)
+                        for field, values in ngram_counts.items()
+                        for n, count in values.items()
+                    ),
+                )
+
+                ngram_counts = defaultdict(Counter)
+                counts = 0
+
+        # Make sure to get that final batch.
+        db_conn.executemany(
+            """insert into ruleset_ngram_part values(?, ?, ?, ?, ?, ?)""",
+            (
+                (ruleset_name, field, *(n + (("",) * (3 - len(n)))), count)
+                for field, values in ngram_counts.items()
+                for n, count in values.items()
+            ),
+        )
+
+        # Make sure to clear out old ngrams first
+        db_conn.execute(
+            "delete from user_ruleset_ngram_count where ruleset_name = ?",
+            [ruleset_name],
+        )
+
+        # Aggregate the new parts into the table.
+        db_conn.execute(
+            """
+            insert into user_ruleset_ngram_count
+                select
+                    ruleset_name,
+                    field,
+                    first_token,
+                    second_token,
+                    third_token,
+                    sum(profile_count)
+                from ruleset_ngram_part
+                group by 1, 2, 3, 4, 5
+            """
+        )
+
+        db_conn.execute("drop table ruleset_ngram_part")
+        db_conn.execute("commit")
+
+    except:
+        db_conn.execute("rollback")
+        db_conn.execute("drop table ruleset_ngram_part")
+        raise

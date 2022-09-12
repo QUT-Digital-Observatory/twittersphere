@@ -33,13 +33,11 @@ An existing ruleset (such as ... this not yet public Australian Twittersphere
 rules ...) can be applied as follows:
 
 ```
-twittersphere filter-users processed.db oz_twittersphere_rules.csv
+twittersphere filter-users oz_twittersphere_rules.csv processed.db RULESET_NAME
 ```
 
-This will create a new table `...` which indicates which user profiles in the
-database have matched the rules in the database. Note that matching users are
-tagged with the filename of the ruleset - multiple rulesets can be applied
-and tracked.
+This will populate the `user_matching_ruleset` table with the `user_id`'s of
+profiles that have matched that ruleset.
 
 
 ### Updating Rules

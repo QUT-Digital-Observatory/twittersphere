@@ -275,10 +275,49 @@ create table if not exists tweet_entity_domain(
     primary key (tweet_id, retrieved_at, entity_id, domain_id)
 ) without rowid;
 
+create table if not exists user_matching_ruleset(
+    ruleset_name text,
+    user_id integer,
+    primary key (ruleset_name, user_id)
+);
+
+create table if not exists user_ruleset_ngram_count(
+    /* The empty string ruleset name will be interpreted as the global count
+    of all profiles. */
+    ruleset_name text,
+    field text,
+    first_token text,
+    second_token text,
+    third_token text,
+    profile_count integer default 0,
+    primary key (ruleset_name, field, first_token, second_token, third_token)
+) without rowid;
+
+
 create table if not exists metadata (
     key text primary key,
     value
 );
+
+create view if not exists user_latest as
+    /* Note that this relies on the SQLite behaviour of selecting the row
+       corresponding to the max value in the case of the group by. */
+    select
+        max(retrieved_at) as latest_retrieved_at,
+        *
+    from user_at_time
+    group by user_id;
+
+create view if not exists tweet_latest as
+    /* Note that this relies on the SQLite behaviour of selecting the row
+       corresponding to the max value in the case of the group by. */
+    select
+        max(retrieved_at) as latest_retrieved_at,
+        *
+    from tweet_at_time
+    group by tweet_id;
+
+
 
 insert or ignore into metadata values('twittersphere_schema_version', {});
 
