@@ -214,7 +214,7 @@ PAGE_SPEC = {
 
 def process_page(raw_page):
 
-    return glom(json.loads(page), PAGE_SPEC)
+    return glom(json.loads(raw_page), PAGE_SPEC)
 
 
 def process_pages(raw_pages):
