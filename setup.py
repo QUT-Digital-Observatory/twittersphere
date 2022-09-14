@@ -1,11 +1,6 @@
 import setuptools
 
-install_requires = [
-    "click>=8.0.0",
-    "regex>=2021.3.17",
-]
-
-extras_require = {"development": ["nox", "pytest", "pip-tools"]}
+install_requires = ["click>=8.0.0", "regex>=2021.3.17", "glom>=22.1.0"]
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -31,12 +26,9 @@ setuptools.setup(
         "Topic :: Sociology",
     ],
     keywords="social_science social_media_analysis",
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     setup_requires=["setuptools_scm"],
     use_scm_version=True,
     install_requires=install_requires,
-    extras_require=extras_require,
-    entry_points={
-        "console_scripts": ["twittersphere=twittersphere:twittersphere.twittersphere"]
-    },
+    entry_points={"console_scripts": ["twittersphere=twittersphere:cli.twittersphere"]},
 )

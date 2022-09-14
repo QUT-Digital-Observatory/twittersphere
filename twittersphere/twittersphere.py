@@ -1,5 +1,6 @@
 """
-twittersphere.py
+The core of the twittersphere package for ingesting tweets and creating or
+applying content based rulesets.
 
 """
 from collections import defaultdict, Counter
@@ -211,8 +212,8 @@ def classify_user_profile(profile, include_rules, exclude_rules):
         text = profile.get(field, "")
 
         ngram_tokens = ngrams(text, 3, stopwords=stopwords)
-        positive_matches[field] = ngram_tokens & include_rules[field]
-        negative_matches[field] = ngram_tokens & exclude_rules[field]
+        positive_matches[field] = ngram_tokens & include_rules.get(field, set())
+        negative_matches[field] = ngram_tokens & exclude_rules.get(field, set())
 
     matched = sum(len(m) for m in positive_matches.values()) > sum(
         len(m) for m in negative_matches.values()
@@ -336,143 +337,176 @@ def transform_profiles_for_annotation(
         yield (*profile, len(author_ids), tweet_count, hex(obfuscated_match))
 
 
-@click.group()
-@click.pass_context
-def twittersphere(ctx):
+def apply_user_rules_to_db(db_conn, include_rules, exclude_rules, ruleset_name):
     """
-    Twittersphere
+    Apply the specified include/exclude rules to the given database conn.
+
+    Only the latest version of each profile is considered for labelling.
+
     """
+    try:
+        db_conn.execute("begin")
 
-
-@twittersphere.command("filter")
-@click.argument("input_files", type=click.Path(exists=True), nargs=-1)
-@click.argument("output_file", type=click.Path(exists=False))
-@click.option("--rules", type=click.Path(exists=True))
-@click.option("--qa-profile-count", type=int, default=100)
-@click.pass_context
-def filter(ctx, input_files, output_file, rules, qa_profile_count):
-
-    # Instantiate and validate the rules
-    include_rules, exclude_rules, all_rules = load_rule_files([rules])
-    total_include_rules = sum(len(x) for x in include_rules.values())
-    total_exclude_rules = sum(len(x) for x in exclude_rules.values())
-
-    print(
-        f"Loaded {total_include_rules} distinct inclusion rules "
-        f"and {total_exclude_rules} distinct exclusion rules from {rules}"
-    )
-
-    tweets_seen = 0
-    tweets_matched = 0
-    next_status = 10000
-
-    with open(output_file, "w") as out:
-
-        account_tweet_count = dict()
-
-        for file in input_files:
-            with open(file, "r") as f:
-                for line in f:
-                    api_result_page = json.loads(line)
-                    transformed_result_page, page_account_tweet_counts = apply_rules(
-                        api_result_page, include_rules, exclude_rules
-                    )
-
-                    tweets_seen += len(api_result_page["data"])
-                    tweets_matched += len(transformed_result_page["data"])
-
-                    # Merge the count of tweets by account. We keep track of the distinct
-                    # versions of the profile information for reporting purposes.
-                    for (
-                        (matched, author_id),
-                        (profile_fields, tweet_count),
-                    ) in page_account_tweet_counts.items():
-
-                        if profile_fields in account_tweet_count:
-                            account_tweet_count[profile_fields][0].add(author_id)
-                            account_tweet_count[profile_fields][1] += tweet_count
-
-                        else:
-                            account_tweet_count[profile_fields] = [
-                                set([author_id]),
-                                tweet_count,
-                                matched,
-                            ]
-
-                    if tweets_seen >= next_status:
-                        print(f"Matched {tweets_matched}/{tweets_seen}.")
-
-                        next_status += 10000
-
-                    out.write(json.dumps(transformed_result_page))
-                    out.write("\n")
-
-    print(f"Matched {tweets_matched}/{tweets_seen} in total.")
-
-    qa_path = f"{output_file}.qa.csv"
-    print(f"Saving QA data to {qa_path}")
-
-    with open(qa_path, "w") as qa:
-        writer = csv.writer(qa, quoting=csv.QUOTE_ALL, dialect="excel")
-
-        writer.writerow(
-            [
-                "name",
-                "description",
-                "location",
-                "unique_profiles",
-                "tweet_count",
-                "obfuscated_match",
-                "human_label",
-            ]
+        db_conn.execute(
+            "delete from user_matching_ruleset where ruleset_name = ?", [ruleset_name]
         )
-        for row in transform_profiles_for_annotation(
-            account_tweet_count, qa_profile_count
-        ):
-            writer.writerow(row)
 
-
-@twittersphere.command("concordance")
-@click.argument("input_file", type=click.Path(exists=True))
-@click.pass_context
-def concordance(ctx, input_file):
-    """
-    Measure concordance between the automated labels and the human labels.
-
-    TODO:
-
-    The output file deobfuscates the machine matched column and rules, and
-    creates additional columns describing the entries in the concordance
-    table.
-
-    """
-    with open(input_file, "r") as f:
-        reader = csv.reader(f, quoting=csv.QUOTE_ALL, dialect="excel")
-
-        # skip header
-        next(reader)
-
-        bit_location = 2**16
-
-        # Accumulators
-        concordance = Counter()
-        weighted_concordance = Counter()
-
-        for row in reader:
-            profile_count = int(row[3])
-            tweet_count = int(row[4])
-            auto_match = bool(int(row[5], 0) & bit_location)
-            human_match = bool(row[6])
-
-            concordance[(human_match, auto_match)] += profile_count
-            weighted_concordance[(human_match, auto_match)] += tweet_count
-
-        print(
-            "Profile weighted concordance counts. Format is Human/Auto decision: weight."
+        profiles = db_conn.execute(
+            "select user_id, location, description, name from user_latest"
         )
-        for decision, weight in sorted(concordance.items()):
-            print(decision, weight)
 
-        print("Tweet weighted concordance counts.")
-        for decision, weight in sorted(weighted_concordance.items()):
-            print(decision, weight)
+        for user_id, location, description, name in profiles:
+            matched, _, _ = classify_user_profile(
+                {
+                    "location": location or "",
+                    "description": description or "",
+                    "name": name or "",
+                },
+                include_rules,
+                exclude_rules,
+            )
+
+            if matched:
+                db_conn.execute(
+                    "insert into user_matching_ruleset values (?, ?)",
+                    [ruleset_name, user_id],
+                )
+
+        db_conn.execute("commit")
+
+    except:
+        db_conn.execute("rollback")
+        raise
+
+
+def count_user_ngrams(db_conn, stopwords, ruleset_name=""):
+    """
+    Count ngrams present in the latest version of each user in the collection.
+
+    If no ruleset_name is provided, this will be a global count across all
+    matching users, otherwise only the `user_id`'s that match `ruleset_name`
+    in the `user_matching_ruleset` table will be counted. This is to support
+    statistical comparisons across different ruleset groups without
+    tokenising everything again.
+
+    """
+
+    try:
+        db_conn.execute("begin")
+
+        db_conn.execute(
+            """
+            create temporary table ruleset_ngram_part as
+                select *
+                from user_ruleset_ngram_count
+                limit 0
+            """
+        )
+
+        if ruleset_name:
+            profiles = db_conn.execute(
+                """
+                select
+                    user_id, location, description, name
+                from user_latest
+                where user_id in (
+                    select user_id
+                    from user_matching_ruleset
+                    where ruleset_name = ?
+                )
+                """,
+                [ruleset_name],
+            )
+        else:
+            profiles = db_conn.execute(
+                """
+                select
+                    user_id, location, description, name
+                from user_latest
+                """
+            )
+
+        ngram_counts = defaultdict(Counter)
+
+        counts = 0
+
+        for user_id, location, description, name in profiles:
+
+            # Tokenise all of the fields.
+            if location:
+
+                l = ngrams(location, 3, stopwords=stopwords)
+                counts += len(l)
+
+                for ngram in l:
+                    ngram_counts["location"][ngram] += 1
+
+            if description:
+
+                d = ngrams(description, 3, stopwords=stopwords)
+                counts += len(d)
+
+                for ngram in d:
+                    ngram_counts["description"][ngram] += 1
+
+            if name:
+
+                n = ngrams(name, 3, stopwords=stopwords)
+                counts += len(n)
+
+                for ngram in n:
+                    ngram_counts["name"][ngram] += 1
+
+            if counts >= 1000000:
+
+                db_conn.executemany(
+                    """insert into ruleset_ngram_part values(?, ?, ?, ?, ?, ?)""",
+                    (
+                        (ruleset_name, field, *(n + (("",) * (3 - len(n)))), count)
+                        for field, values in ngram_counts.items()
+                        for n, count in values.items()
+                    ),
+                )
+
+                ngram_counts = defaultdict(Counter)
+                counts = 0
+
+        # Make sure to get that final batch.
+        db_conn.executemany(
+            """insert into ruleset_ngram_part values(?, ?, ?, ?, ?, ?)""",
+            (
+                (ruleset_name, field, *(n + (("",) * (3 - len(n)))), count)
+                for field, values in ngram_counts.items()
+                for n, count in values.items()
+            ),
+        )
+
+        # Make sure to clear out old ngrams first
+        db_conn.execute(
+            "delete from user_ruleset_ngram_count where ruleset_name = ?",
+            [ruleset_name],
+        )
+
+        # Aggregate the new parts into the table.
+        db_conn.execute(
+            """
+            insert into user_ruleset_ngram_count
+                select
+                    ruleset_name,
+                    field,
+                    first_token,
+                    second_token,
+                    third_token,
+                    sum(profile_count)
+                from ruleset_ngram_part
+                group by 1, 2, 3, 4, 5
+            """
+        )
+
+        db_conn.execute("drop table ruleset_ngram_part")
+        db_conn.execute("commit")
+
+    except:
+        db_conn.execute("rollback")
+        db_conn.execute("drop table ruleset_ngram_part")
+        raise
