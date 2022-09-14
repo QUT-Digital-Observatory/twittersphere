@@ -43,11 +43,21 @@ def test_prepare_filter_db(tmp_path):
     ]
     assert tweet_count >= 2000
 
-    user_count = list(db.execute("select count(*) from directly_collected_user"))[0][0]
-    assert user_count >= 2000
+    direct_user_count = list(
+        db.execute("select count(*) from directly_collected_user")
+    )[0][0]
+    total_user_count = list(
+        db.execute("select count(distinct user_id) from user_at_time")
+    )[0][0]
+
+    with open(data_path / "user_ids.txt", "r") as f:
+        actual_user_count = len({l for l in f})
+
+    # Note that users can be suspended in between collection and hydration!
+    assert 0 < direct_user_count <= actual_user_count
+    assert direct_user_count < total_user_count
 
     # Apply the simple "australia" rule to the database
-
     result = runner.invoke(
         cli.twittersphere,
         [
@@ -69,6 +79,8 @@ def test_prepare_filter_db(tmp_path):
             """
         )
     )[0][0]
+
+    assert matched_count > 0
 
 
 # Test applying the rules to the database, and to the streams of tweets
