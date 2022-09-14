@@ -320,7 +320,7 @@ def transform_profiles_for_annotation(
 
     random.shuffle(sample_profiles)
 
-    bit_location = 2 ** 16
+    bit_location = 2**16
 
     for profile in sample_profiles:
         author_ids, tweet_count, matched = account_tweet_count[profile]
@@ -452,7 +452,7 @@ def concordance(ctx, input_file):
         # skip header
         next(reader)
 
-        bit_location = 2 ** 16
+        bit_location = 2**16
 
         # Accumulators
         concordance = Counter()
