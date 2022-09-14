@@ -7,8 +7,8 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="twittersphere",
-    author="QUT Digital Observatory",
-    author_email="digitalobservatory@qut.edu.au",
+    author="Sam Hames and QUT Digital Observatory",
+    author_email="s.hames@uq.edu.au",
     description="Tools for content based filtering of tweets and Twitter accounts",
     long_description=long_description,
     long_description_content_type="text/markdown",
