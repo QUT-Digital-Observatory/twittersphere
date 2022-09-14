@@ -2,8 +2,6 @@ import setuptools
 
 install_requires = ["click>=8.0.0", "regex>=2021.3.17", "glom>=22.1.0"]
 
-extras_require = {"development": ["nox", "pytest", "pip-tools"]}
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
@@ -32,6 +30,5 @@ setuptools.setup(
     setup_requires=["setuptools_scm"],
     use_scm_version=True,
     install_requires=install_requires,
-    extras_require=extras_require,
     entry_points={"console_scripts": ["twittersphere=twittersphere:cli.twittersphere"]},
 )

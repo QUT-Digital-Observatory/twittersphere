@@ -4,6 +4,7 @@ import json
 import click
 
 from . import db
+from . import twittersphere as twt
 
 
 @click.group()
@@ -53,6 +54,13 @@ def filter_users(ctx, rule_file, prepared_db, ruleset_name):
     If `ruleset_name` already exists in the table, it will be replaced.
 
     """
+
+    db_conn = db.ensure_db(prepared_db)
+    include_rules, exclude_rules, _ = twt.load_rule_files([rule_file])
+
+    twt.apply_user_rules_to_db(
+        db_conn, include_rules, exclude_rules, ruleset_name or rule_file
+    )
 
 
 @twittersphere.command("filter")
