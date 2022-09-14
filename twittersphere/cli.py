@@ -18,9 +18,16 @@ def twittersphere(ctx):
 @twittersphere.command("prepare")
 @click.argument("input_files", type=click.Path(exists=True), nargs=-1)
 @click.argument("output_db", type=click.Path())
-@click.option("--n_cpus", default=2, type=click.IntRange(min=1))
+@click.option("--n-cpus", default=2, type=click.IntRange(min=1))
+@click.option(
+    "--max-memory-db-size",
+    default=2,
+    type=click.FloatRange(min=0.1),
+    help="The maximum size of the in memory staging database in GiB. "
+    "Using more memory may speed up jobs with 10's of millions of tweets.",
+)
 @click.pass_context
-def prepare(ctx, input_files, output_db, n_cpus):
+def prepare(ctx, input_files, output_db, n_cpus, max_memory_db_size):
     """
     Processes the Twitter V2 JSON input_files into the output_db.
 
@@ -32,7 +39,13 @@ def prepare(ctx, input_files, output_db, n_cpus):
                 for line in f:
                     yield line
 
-    db.insert_pages(output_db, iterate_pages(input_files), n_cpus=n_cpus)
+    max_db_size = max_memory_db_size * (2**30)
+    db.insert_pages(
+        output_db,
+        iterate_pages(input_files),
+        n_cpus=n_cpus,
+        in_memory_max_db_size=max_db_size,
+    )
 
 
 @twittersphere.command("filter-users")

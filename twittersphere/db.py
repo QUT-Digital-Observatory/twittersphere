@@ -86,13 +86,13 @@ def flush_db(db_conn, target_db_path):
     db_conn.close()
 
 
-def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**30):
+def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**31):
     """
     Process the stream of pages and insert them into the database.
 
     Data is staged to an in memory database until it hits
     `in_memory_max_db_size`, then it is flushed to the target database. The
-    default size is 1GiB. For larger collections, using more memory is likely
+    default size is 2GiB. For larger collections, using more memory is likely
     to make the process go faster.
 
     """
