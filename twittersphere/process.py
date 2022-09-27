@@ -54,7 +54,7 @@ REFERENCED_TWEET_SPEC = (
     [{T["type"]: T["id"]}],
     Merge(),
     {
-        "replied": Coalesce("replied", default=None),
+        "replied": Coalesce("replied_to", default=None),
         "retweeted": Coalesce("retweeted", default=None),
         "quoted": Coalesce("quoted", default=None),
     },

@@ -43,6 +43,15 @@ def test_prepare_filter_db(tmp_path):
     ]
     assert tweet_count >= 2000
 
+    # Check that each of the referenced tweet fields are populated
+    reply_count, quote_count, retweet_count = list(
+        db.execute(
+            "select count(replied_to_tweet_id), count(quoted_tweet_id), count(retweeted_tweet_id) from tweet_latest"
+        )
+    )[0]
+
+    assert reply_count > 0 and quote_count > 0 and retweet_count > 0
+
     direct_user_count = list(
         db.execute("select count(*) from directly_collected_user")
     )[0][0]
