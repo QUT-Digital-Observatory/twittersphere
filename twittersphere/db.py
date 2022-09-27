@@ -339,11 +339,7 @@ def insert_processed(db_conn, processed):
 
     db_conn.executemany(
         """
-        insert or ignore into tweet_url values (
-            :id,
-            :retrieved_at,
-            :url
-        )
+        insert or ignore into tweet_url values (?, ?, ?)
         """,
         (
             (url["url"], metadata["retrieved_at"], tweet["id"])
