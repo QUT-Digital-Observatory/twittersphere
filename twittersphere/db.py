@@ -342,7 +342,7 @@ def insert_processed(db_conn, processed):
         insert or ignore into tweet_url values (?, ?, ?)
         """,
         (
-            (url["url"], metadata["retrieved_at"], tweet["id"])
+            (tweet["id"], metadata["retrieved_at"], url["url"])
             for tweet in tweets
             for url in tweet["urls"]
         ),
