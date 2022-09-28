@@ -8,7 +8,7 @@ TODO:
 
 """
 
-CURRENT_SCHEMA_VERSION = 12
+CURRENT_SCHEMA_VERSION = 13
 
 SCHEMA_STATEMENTS = """
 CREATE table if not exists collection_context (
@@ -275,6 +275,15 @@ create table if not exists tweet_entity_domain(
     primary key (tweet_id, retrieved_at, entity_id, domain_id)
 ) without rowid;
 
+create table if not exists tweet_annotation(
+    tweet_id integer,
+    retrieved_at datetime,
+    type text,
+    normalized_text text,
+    probability float,
+    primary key (tweet_id, retrieved_at, type, normalized_text)
+) without rowid;
+
 create table if not exists user_matching_ruleset(
     ruleset_name text,
     user_id integer,
@@ -345,5 +354,6 @@ table_keys = {
     "domain": "domain_id",
     "entity": "entity_id",
     "tweet_entity_domain": "tweet_id,retrieved_at,entity_id,domain_id",
+    "tweet_annotation": "tweet_id,retrieved_at,type,normalized_text",
     "metadata": "key",
 }

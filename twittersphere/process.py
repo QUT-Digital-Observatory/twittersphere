@@ -64,6 +64,9 @@ REFERENCED_TWEET_SPEC = (
 # for the entities in a profile object
 HASHTAGS = CASHTAGS = ["tag"]
 TWEET_MENTIONS = [{"username": "username", "user_id": "id"}]
+ANNOTATIONS = [
+    {"probability": "probability", "type": "type", "normalized_text": "normalized_text"}
+]
 CONTEXT_ANNOTATIONS = [
     {
         "domain_id": "domain.id",
@@ -124,6 +127,10 @@ TWEET_SPEC = (
             "cashtags": (Coalesce("entities.cashtags", default=[]), CASHTAGS),
             "mentions": (Coalesce("entities.mentions", default=[]), TWEET_MENTIONS),
             "urls": (Coalesce("entities.urls", default=[]), TWEET_URLS),
+            "annotations": (
+                Coalesce("entities.annotations", default=[]),
+                ANNOTATIONS,
+            ),
             "context_annotations": (
                 Coalesce("context_annotations", default=[]),
                 CONTEXT_ANNOTATIONS,

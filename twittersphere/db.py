@@ -368,6 +368,21 @@ def insert_processed(db_conn, processed):
     )
 
     db_conn.executemany(
+        "insert or ignore into tweet_annotation values (?, ?, ?, ?, ?)",
+        (
+            (
+                tweet["id"],
+                metadata["retrieved_at"],
+                annotation["type"],
+                annotation["normalized_text"],
+                annotation["probability"],
+            )
+            for tweet in tweets
+            for annotation in tweet["annotations"]
+        ),
+    )
+
+    db_conn.executemany(
         "insert or ignore into entity values (:entity_id, :entity_name, :entity_description)",
         (annotation for tweet in tweets for annotation in tweet["context_annotations"]),
     )
