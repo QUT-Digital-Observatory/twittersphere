@@ -16,8 +16,11 @@ CREATE table if not exists collection_context (
     retrieved_at datetime,
     twitter_url text,
     twarc_version text,
+    label text,
     unique (retrieved_at, twitter_url, twarc_version)
 );
+
+CREATE index if not exists label_context on collection_context(label);
 
 CREATE table if not exists user_at_time (
 /*

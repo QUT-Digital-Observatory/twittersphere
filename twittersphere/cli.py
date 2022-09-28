@@ -26,23 +26,30 @@ def twittersphere(ctx):
     help="The maximum size of the in memory staging database in GiB. "
     "Using more memory may speed up jobs with 10's of millions of tweets.",
 )
+@click.option(
+    "--label",
+    type=str,
+    help="The label to give to contexts from this set of data. "
+    "If not provided, the filename will be used. This can be used to differentiate "
+    "parts or purposes of a collection.",
+)
 @click.pass_context
-def prepare(ctx, input_files, output_db, n_cpus, max_memory_db_size):
+def prepare(ctx, input_files, output_db, n_cpus, max_memory_db_size, label):
     """
     Processes the Twitter V2 JSON input_files into the output_db.
 
     """
 
-    def iterate_pages(input_files):
+    def iterate_pages(input_files, label):
         for input_file in input_files:
             with open(input_file, "rb") as f:
                 for line in f:
-                    yield line
+                    yield line, label or input_file
 
     max_db_size = max_memory_db_size * (2**30)
     db.insert_pages(
         output_db,
-        iterate_pages(input_files),
+        iterate_pages(input_files, label),
         n_cpus=n_cpus,
         in_memory_max_db_size=max_db_size,
     )

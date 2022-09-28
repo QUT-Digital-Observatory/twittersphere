@@ -224,13 +224,13 @@ def process_page(raw_page):
     return glom(json.loads(raw_page), PAGE_SPEC)
 
 
-def process_pages(raw_pages):
+def process_pages(labelled_pages):
 
     processed_pages = []
 
-    for raw_page in raw_pages:
+    for raw_page, label in labelled_pages:
         page = json.loads(raw_page)
 
-        processed_pages.append(glom(page, PAGE_SPEC))
+        processed_pages.append((glom(page, PAGE_SPEC), label))
 
     return processed_pages

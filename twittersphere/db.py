@@ -86,9 +86,10 @@ def flush_db(db_conn, target_db_path):
     db_conn.close()
 
 
-def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**31):
+def insert_pages(db_path, labelled_pages, n_cpus=2, in_memory_max_db_size=2**31):
     """
-    Process the stream of pages and insert them into the database.
+    Process the stream of pages and associated labels and insert them into the
+    database.
 
     Data is staged to an in memory database until it hits
     `in_memory_max_db_size`, then it is flushed to the target database. The
@@ -115,9 +116,9 @@ def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**31):
 
         db_conn.execute("begin")
 
-        for raw_page in raw_pages:
+        for raw_page, label in labelled_pages:
 
-            batch.append(raw_page)
+            batch.append((raw_page, label))
             batch_size += len(raw_page)
 
             if batch_size >= min_batch_size:
@@ -130,8 +131,8 @@ def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**31):
 
                 for f in done:
                     results_to_insert = f.result()
-                    for result in results_to_insert:
-                        insert_processed(db_conn, result)
+                    for result, label in results_to_insert:
+                        insert_processed(db_conn, result, label)
 
                 # Commit periodically from the in memory database
                 db_size = list(
@@ -164,8 +165,8 @@ def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**31):
 
         for f in cf.as_completed(futures):
             results_to_insert = f.result()
-            for result in results_to_insert:
-                insert_processed(db_conn, result)
+            for result, label in results_to_insert:
+                insert_processed(db_conn, result, label)
 
         db_conn.execute("commit")
 
@@ -175,17 +176,17 @@ def insert_pages(db_path, raw_pages, n_cpus=2, in_memory_max_db_size=2**31):
         flush_db(db_conn, db_path)
 
 
-def insert_processed(db_conn, processed):
+def insert_processed(db_conn, processed, label=""):
     """
     Insert processed data into the database.
 
-    A savepoint is wrapped around this transaction to ensure that partial
-    writes aren't seen.
+    Optionally provide a label for this particular page of data.
 
     """
     data = processed["data"]
     includes = processed["includes"]
     metadata = processed["metadata"]
+    metadata["label"] = label
 
     # First, create the collection context id/metadata
     db_conn.execute(
@@ -193,8 +194,9 @@ def insert_processed(db_conn, processed):
         insert or ignore into collection_context(
             retrieved_at,
             twitter_url,
-            twarc_version
-        ) values(:retrieved_at, :twitter_url, :twarc_version)
+            twarc_version,
+            label
+        ) values(:retrieved_at, :twitter_url, :twarc_version, :label)
         """,
         metadata,
     )
