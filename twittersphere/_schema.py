@@ -8,7 +8,7 @@ TODO:
 
 """
 
-CURRENT_SCHEMA_VERSION = 13
+CURRENT_SCHEMA_VERSION = 14
 
 SCHEMA_STATEMENTS = """
 CREATE table if not exists collection_context (
@@ -82,13 +82,9 @@ create table if not exists directly_collected_user(
 
 create table if not exists tweet_at_time (
     /*
-    Contains the 'immutable' characteristics of a tweet, such as the text,
-    structure of the conversation, the user ID and so on.
-    Mutable characteristics of a tweet are captured in tweet metrics, to
-    allow natural capture of change over time without complicating the
-    main tweet table. Other aspects of tweets such as hashtags and
-    mentions are treated as insert only tables of attributes to handle
-    change over time.
+    Shows the history of a tweet object over time. There is one
+    row per tweet + datetime it was collected.
+
     Examples:
     -- Count the number of tweets
     select count(*) from tweet;
@@ -118,6 +114,10 @@ create table if not exists tweet_at_time (
     created_at text,
     retrieved_at datetime,
     conversation_id integer,
+    edits_remaining integer,
+    is_edit_eligible integer,
+    editable_until datetime,
+    min_edit_history_tweet_id integer,
     retweeted_tweet_id integer,
     quoted_tweet_id integer,
     replied_to_tweet_id integer,
@@ -137,6 +137,18 @@ create table if not exists tweet_at_time (
     primary key (tweet_id, retrieved_at),
     foreign key (user_id, retrieved_at) references user_at_time,
     foreign key (poll_id, retrieved_at) references poll
+) without rowid;
+
+create table if not exists tweet_edit_history(
+    /*
+    This table represents the array of versions of a tweet.
+
+    There is one row for every tweet with edit related information present.
+
+    */
+    min_edit_history_tweet_id integer,
+    tweet_id integer,
+    primary key (min_edit_history_tweet_id, tweet_id)
 ) without rowid;
 
 create table if not exists directly_collected_tweet(

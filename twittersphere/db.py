@@ -249,6 +249,7 @@ def insert_processed(db_conn, processed, label=""):
 
     # Process Tweets
     tweets = data.get("tweets", []) + includes["tweets"]
+
     db_conn.executemany(
         """
         insert or ignore into tweet_at_time values (
@@ -258,6 +259,10 @@ def insert_processed(db_conn, processed, label=""):
             :created_at,
             :retrieved_at,
             :conversation_id,
+            :edits_remaining,
+            :is_edit_eligible,
+            :editable_until,
+            :min_edit_history_tweet_id,
             :retweeted,
             :quoted,
             :replied,
@@ -277,6 +282,16 @@ def insert_processed(db_conn, processed, label=""):
         )
         """,
         (tweet | metadata for tweet in tweets),
+    )
+
+    # Tweet edit history if present
+    db_conn.executemany(
+        "insert or ignore into tweet_edit_history values (?, ?)",
+        (
+            (tweet["min_edit_history_tweet_id"], tweet_id)
+            for tweet in tweets
+            for tweet_id in tweet["edit_history_tweet_ids"]
+        ),
     )
 
     # Tweet ancillary - mentions, media, urls, hashtags, annotations

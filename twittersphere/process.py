@@ -135,6 +135,19 @@ TWEET_SPEC = (
                 Coalesce("context_annotations", default=[]),
                 CONTEXT_ANNOTATIONS,
             ),
+            # Tweet edit related fields and annotations - data collected before 2022-09-29 won't have this,
+            # However all data going forward should have these. Since it's likely there is a lot of
+            # already collected material we'll make the defaults null to reflect absence.
+            "edits_remaining": Coalesce("edit_controls.edits_remaining", default=None),
+            "is_edit_eligible": Coalesce(
+                "edit_controls.is_edit_eligible", default=None
+            ),
+            "editable_until": Coalesce("edit_controls.editable_until", default=None),
+            "edit_history_tweet_ids": Coalesce("edit_history_tweet_ids", default=[]),
+            "min_edit_history_tweet_id": (
+                Coalesce("edit_history_tweet_ids", default=[]),
+                lambda x: min(x, default=None),
+            ),
         },
         "referenced": Coalesce(
             ("referenced_tweets", REFERENCED_TWEET_SPEC),
