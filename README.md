@@ -18,26 +18,34 @@ Twittersphere exposes a command line interface and a Python library for:
 
 ## Command Line Usage
 
+### Creating a database
+
 In the first instance Twittersphere can be used to create a local relational
 database from files containing V2 API Twitter JSON data collected via twarc.
 Any tweet or user JSON data collected via the Twitter API including search
 and streaming endpoints should work. Note that this process safely
 deduplicates items: you can insert the same file more than once and not see
-the same tweet twice.
+the same tweet twice. This database can be queried directly from most
+programming languages, or after installing an [ODBC connector]
+(http://www.ch-werner.de/sqliteodbc/) can be connected to tools like Excel or
+Tableau.
 
 ```
-twittersphere prepare processed.db FILE1.json FILE2.json ... FILEN.json
+twittersphere prepare FILE1.json FILE2.json ... FILEN.json processed.db
 ```
+
+### Rule Based User Filtering
 
 An existing ruleset (such as ... this not yet public Australian Twittersphere
 rules ...) can be applied as follows:
 
 ```
-twittersphere filter-users oz_twittersphere_rules.csv processed.db RULESET_NAME
+twittersphere filter-users rules.csv processed.db
 ```
 
 This will populate the `user_matching_ruleset` table with the `user_id`'s of
-profiles that have matched that ruleset.
+profiles that have matched that ruleset, along with the name of the filename
+of the rules for later reference.
 
 
 ### Updating Rules
