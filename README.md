@@ -26,9 +26,8 @@ Any tweet or user JSON data collected via the Twitter API including search
 and streaming endpoints should work. Note that this process safely
 deduplicates items: you can insert the same file more than once and not see
 the same tweet twice. This database can be queried directly from most
-programming languages, or after installing an [ODBC connector]
-(http://www.ch-werner.de/sqliteodbc/) can be connected to tools like Excel or
-Tableau.
+programming languages, or after installing an [ODBC connector](http://www.ch-werner.de/sqliteodbc/)
+can be connected to tools like Excel or Tableau.
 
 ```
 twittersphere prepare FILE1.json FILE2.json ... FILEN.json processed.db
