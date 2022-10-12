@@ -41,7 +41,7 @@ USER_SPEC = {
     "following_count": "public_metrics.following_count",
     "listed_count": "public_metrics.listed_count",
     "tweet_count": "public_metrics.tweet_count",
-    "url": "url",
+    "url": Coalesce("url", default=None),
     "verified": "verified",
     "withheld_country_codes": Coalesce(
         ("withheld.country_codes", json.dumps), default=None

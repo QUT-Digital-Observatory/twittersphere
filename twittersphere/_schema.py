@@ -355,6 +355,7 @@ table_keys = {
     "user_at_time": "user_id,retrieved_at",
     "directly_collected_user": "user_id",
     "tweet_at_time": "tweet_id,retrieved_at",
+    "tweet_edit_history": "min_edit_history_tweet_id,tweet_id",
     "directly_collected_tweet": "tweet_id",
     "tweet_hashtag": "tweet_id,retrieved_at,hashtag",
     "tweet_cashtag": "tweet_id,retrieved_at,cashtag",
@@ -371,4 +372,6 @@ table_keys = {
     "tweet_entity_domain": "tweet_id,retrieved_at,entity_id,domain_id",
     "tweet_annotation": "tweet_id,retrieved_at,type,normalized_text",
     "metadata": "key",
+    "user_matching_ruleset": "ruleset_name,user_id",
+    "user_ruleset_ngram_count": "ruleset_name,field,first_token,second_token,third_token",
 }
