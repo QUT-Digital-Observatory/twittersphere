@@ -186,7 +186,7 @@ create table if not exists tweet_cashtag(
 create table if not exists tweet_mention(
     tweet_id integer,
     retrieved_at datetime,
-    mentioned_user_id text,
+    mentioned_user_id integer,
     mentioned_username text,
     foreign key (tweet_id, retrieved_at) references tweet_at_time,
     primary key (tweet_id, retrieved_at, mentioned_user_id)

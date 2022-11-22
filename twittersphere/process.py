@@ -39,7 +39,7 @@ USER_SPEC = {
     "protected": "protected",
     "followers_count": "public_metrics.followers_count",
     "following_count": "public_metrics.following_count",
-    "listed_count": "public_metrics.listed_count",
+    "listed_count": Coalesce("public_metrics.listed_count", default=0),
     "tweet_count": "public_metrics.tweet_count",
     "url": Coalesce("url", default=None),
     "verified": "verified",
