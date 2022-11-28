@@ -57,7 +57,7 @@ and some more extended examples below.
     tweet_count integer,
     listed_count integer,
     withheld_country_codes text,
-    -- TODO: withheld related information
+    directly_collected boolean,
     primary key (user_id, retrieved_at)
 ) without rowid;
 
@@ -130,6 +130,7 @@ create table if not exists tweet_at_time (
     withheld_country_codes text,
     poll_id integer,
     place_id integer references place,
+    directly_collected boolean,
     primary key (tweet_id, retrieved_at),
     foreign key (user_id, retrieved_at) references user_at_time,
     foreign key (poll_id, retrieved_at) references poll

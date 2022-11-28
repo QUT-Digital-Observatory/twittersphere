@@ -215,32 +215,41 @@ def insert_processed(db_conn, processed, label=""):
     metadata["context_id"] = context_id
 
     # Process users
-    users = data.get("users", []) + includes["users"]
-    db_conn.executemany(
-        """
-        insert or ignore into user_at_time values (
-            :id,
-            :context_id,
-            :retrieved_at,
-            :name,
-            :profile_image_url,
-            :created_at,
-            :protected,
-            :description,
-            :location,
-            :pinned_tweet_id,
-            :verified,
-            :url,
-            :username,
-            :followers_count,
-            :following_count,
-            :tweet_count,
-            :listed_count,
-            :withheld_country_codes
+    for users, directly_collected in (
+        (data.get("users", []), 1),
+        (includes["users"], 0),
+    ):
+
+        metadata["directly_collected"] = directly_collected
+
+        db_conn.executemany(
+            """
+            insert or ignore into user_at_time values (
+                :id,
+                :context_id,
+                :retrieved_at,
+                :name,
+                :profile_image_url,
+                :created_at,
+                :protected,
+                :description,
+                :location,
+                :pinned_tweet_id,
+                :verified,
+                :url,
+                :username,
+                :followers_count,
+                :following_count,
+                :tweet_count,
+                :listed_count,
+                :withheld_country_codes,
+                :directly_collected
+            )
+            """,
+            (user | metadata for user in users),
         )
-        """,
-        (user | metadata for user in users),
-    )
+
+        del metadata["directly_collected"]
 
     db_conn.executemany(
         "insert or ignore into directly_collected_user values(:id)",
@@ -248,41 +257,52 @@ def insert_processed(db_conn, processed, label=""):
     )
 
     # Process Tweets
-    tweets = data.get("tweets", []) + includes["tweets"]
+    # Note we insert the "directly" collected rows first -
+    # because this is insert ignore, we want that to be the canonical
+    # version. It is possible for a tweet to be both directly collected and
+    # included in the same page (eg, a quick retweet of the original tweet)
+    for tweets, directly_collected in (
+        (data.get("tweets", []), True),
+        (includes["tweets"], False),
+    ):
+        metadata["directly_collected"] = directly_collected
 
-    db_conn.executemany(
-        """
-        insert or ignore into tweet_at_time values (
-            :id,
-            :context_id,
-            :author_id,
-            :created_at,
-            :retrieved_at,
-            :conversation_id,
-            :edits_remaining,
-            :is_edit_eligible,
-            :editable_until,
-            :min_edit_history_tweet_id,
-            :retweeted,
-            :quoted,
-            :replied,
-            :text,
-            :lang,
-            :source,
-            :possibly_sensitive,
-            :reply_settings,
-            :like_count,
-            :quote_count,
-            :reply_count,
-            :retweet_count,
-            :withheld_copyright,
-            :withheld_country_codes,
-            :poll_id,
-            :place_id
+        db_conn.executemany(
+            """
+            insert or ignore into tweet_at_time values (
+                :id,
+                :context_id,
+                :author_id,
+                :created_at,
+                :retrieved_at,
+                :conversation_id,
+                :edits_remaining,
+                :is_edit_eligible,
+                :editable_until,
+                :min_edit_history_tweet_id,
+                :retweeted,
+                :quoted,
+                :replied,
+                :text,
+                :lang,
+                :source,
+                :possibly_sensitive,
+                :reply_settings,
+                :like_count,
+                :quote_count,
+                :reply_count,
+                :retweet_count,
+                :withheld_copyright,
+                :withheld_country_codes,
+                :poll_id,
+                :place_id,
+                :directly_collected
+            )
+            """,
+            (tweet | metadata for tweet in tweets),
         )
-        """,
-        (tweet | metadata for tweet in tweets),
-    )
+
+        del metadata["directly_collected"]
 
     # Tweet edit history if present
     db_conn.executemany(
