@@ -107,7 +107,7 @@ TWEET_SPEC = (
             "created_at": "created_at",
             "text": "text",
             "lang": "lang",
-            "source": "source",
+            "source": Coalesce("source", default=None),
             "like_count": "public_metrics.like_count",
             "quote_count": "public_metrics.quote_count",
             "reply_count": "public_metrics.reply_count",

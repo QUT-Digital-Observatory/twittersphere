@@ -2,13 +2,9 @@
 The schema creation statements, and the associated index and materialised view
 statements to be run after inserting data.
 
-TODO:
-
-- Likes, followers, following.
-
 """
 
-CURRENT_SCHEMA_VERSION = 14
+CURRENT_SCHEMA_VERSION = 15
 
 SCHEMA_STATEMENTS = """
 CREATE table if not exists collection_context (
