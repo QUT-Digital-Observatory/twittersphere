@@ -90,10 +90,19 @@ def flush_db(db_conn, target_db_path):
 
     db_conn.execute(
         """
-        CREATE temporary table context_id_conversion as
+        CREATE temporary table context_id_conversion (
+            source_id integer primary key,
+            target_id integer
+        )
+        """
+    )
+
+    db_conn.execute(
+        """
+        insert into context_id_conversion
             select
-                a.context_id as source,
-                b.context_id as target
+                a.context_id as source_id,
+                b.context_id as target_id
             from main.collection_context as a
             inner join flush_to.collection_context as b
                 using(retrieved_at, twitter_url, twarc_version, label)
@@ -105,7 +114,7 @@ def flush_db(db_conn, target_db_path):
         insert or ignore into flush_to.user_at_time
             select
                 user_id,
-                (select target from context_id_conversion where source=context_id),
+                (select target_id from context_id_conversion where source_id=context_id),
                 retrieved_at,
                 name,
                 profile_image_url,
@@ -133,7 +142,7 @@ def flush_db(db_conn, target_db_path):
         insert or ignore into flush_to.tweet_at_time
             select
                 tweet_id,
-                (select target from context_id_conversion where source=context_id),
+                (select target_id from context_id_conversion where source_id=context_id),
                 user_id,
                 created_at,
                 retrieved_at,
