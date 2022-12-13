@@ -42,6 +42,7 @@ def prepare(ctx, input_files, output_db, n_cpus, max_memory_db_size, label):
 
     def iterate_pages(input_files, label):
         for input_file in input_files:
+            click.echo(f'Preparing file "{input_file}" into "{output_db}"')
             with open(input_file, "rb") as f:
                 for line in f:
                     yield line, label or input_file
