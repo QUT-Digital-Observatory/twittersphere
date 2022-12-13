@@ -7,4 +7,5 @@ def test_schema_prepare():
 
     """
     tables_created = _schema.SCHEMA_STATEMENTS.lower().count("create table")
-    assert len(_schema.table_keys) == tables_created
+    # Three tables are handled specially.
+    assert len(_schema.table_keys) == (tables_created - 3)

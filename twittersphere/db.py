@@ -73,6 +73,97 @@ def flush_db(db_conn, target_db_path):
     db_conn.execute("attach ? as flush_to", (target_db_path,))
     db_conn.execute("begin")
 
+    # We need to handle context_id's and associated tables more carefully, as
+    # the context_id is local to the db_conn, not the final destination table.
+    db_conn.execute(
+        """
+        insert into flush_to.collection_context
+            select
+                null,     
+                retrieved_at,
+                twitter_url,
+                twarc_version,
+                label
+            from main.collection_context
+        """
+    )
+
+    db_conn.execute(
+        """
+        CREATE temporary table context_id_conversion as
+            select
+                a.context_id as source,
+                b.context_id as target
+            from main.collection_context as a
+            inner join flush_to.collection_context as b
+                using(retrieved_at, twitter_url, twarc_version, label)
+        """
+    )
+
+    db_conn.execute(
+        """
+        insert or ignore into flush_to.user_at_time
+            select
+                user_id,
+                (select target from context_id_conversion where source=context_id),
+                retrieved_at,
+                name,
+                profile_image_url,
+                created_at,
+                protected,
+                description,
+                location,
+                pinned_tweet_id,
+                verified,
+                url,
+                username,
+                followers_count,
+                following_count,
+                tweet_count,
+                listed_count,
+                withheld_country_codes,
+                directly_collected
+            from main.user_at_time
+            order by user_id, retrieved_at
+        """
+    )
+
+    db_conn.execute(
+        """
+        insert or ignore into flush_to.tweet_at_time
+            select
+                tweet_id,
+                (select target from context_id_conversion where source=context_id),
+                user_id,
+                created_at,
+                retrieved_at,
+                conversation_id,
+                edits_remaining,
+                is_edit_eligible,
+                editable_until,
+                min_edit_history_tweet_id,
+                retweeted_tweet_id,
+                quoted_tweet_id,
+                replied_to_tweet_id,
+                text,
+                lang,
+                source,
+                possibly_sensitive,
+                reply_settings,
+                like_count,
+                quote_count,
+                reply_count,
+                retweet_count,
+                withheld_copyright,
+                withheld_country_codes,
+                poll_id,
+                place_id,
+                directly_collected
+            from main.tweet_at_time
+            order by tweet_id, retrieved_at
+        """
+    )
+
     for table, primary_key in _schema.table_keys.items():
         db_conn.execute(
             f"""

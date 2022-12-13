@@ -348,10 +348,7 @@ insert or ignore into metadata values('twittersphere_schema_version', {});
 
 
 table_keys = {
-    "collection_context": "context_id",
-    "user_at_time": "user_id,retrieved_at",
     "directly_collected_user": "user_id",
-    "tweet_at_time": "tweet_id,retrieved_at",
     "tweet_edit_history": "min_edit_history_tweet_id,tweet_id",
     "directly_collected_tweet": "tweet_id",
     "tweet_hashtag": "tweet_id,retrieved_at,hashtag",
