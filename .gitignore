@@ -1,0 +1,3 @@
+# Python build artefacts
+.eggs
+*.egg-info
