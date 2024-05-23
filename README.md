@@ -35,8 +35,7 @@ twittersphere prepare FILE1.json FILE2.json ... FILEN.json processed.db
 
 ### Rule Based User Filtering
 
-An existing ruleset (such as ... this not yet public Australian Twittersphere
-rules ...) can be applied as follows:
+An existing ruleset can be applied as follows:
 
 ```
 twittersphere filter-users rules.csv processed.db
@@ -72,9 +71,23 @@ To create a new rules you will need to generate an initial seed rule set, or
 alternatively an initial seed population set.
 
 
+## Existing rule sets
+
+Do you have a set of rules you've built with `twittersphere`? Let us know by submitting an [issue](https://github.com/QUT-Digital-Observatory/twittersphere/issues), posting in the [discussions](https://github.com/QUT-Digital-Observatory/twittersphere/discussions), or emailing [digitalobservatory@qut.edu.au](mailto:digitalobservatory@qut.edu.au) and we can add it to this list. Or feel free to submit a pull request if you'd like to add it yourself!
+
+### The Australian Twittersphere
+
+[The Australian Twittersphere](https://www.digitalobservatory.net.au/resources/australian-twittersphere/) is a longitudinal (2016-2023) collection of tweets from a population of Twitter accounts which explicitly self-identify as Australian or having connection to Australia. The population list (and rule list) and the collection of tweets itself are operated as a databank by the [QUT Digital Observatory](https://www.digitalobservatory.net.au/).
+
+The [Australian Twittersphere rule list](https://researchdatafinder.qut.edu.au/display/n41990) is published as open data as a file compatible with `twittersphere`. You can use it to determine whether a Twitter/X profile would be eligible for inclusion in the Australian Twittersphere.
+
+These population rules can be cited as:
+
+> Hames, Sam; Takahashi, Marissa; Miller, Alice; QUT Digital Observatory; (2023): Australian Twittersphere Population Rules. Queensland University of Technology. (Dataset) https://doi.org/10.25912/RDF_1711599518062
+
 ## Limitations
 
-Note that Twittersphere does not support Twitter V1.1 data at all.
+Note that Twittersphere does not support Twitter V1.1 data at all. No support is provided for any API changes made by X after June 2023.
 
 Data collected with tools other than twarc, collected with twarc metadata
 turned off, or collected with limited fields included in the output will not
